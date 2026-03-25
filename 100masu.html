@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>100マス計算</title>
+<link href="https://fonts.googleapis.com/css2?family=Kaisei+Decol:wght@400;700&family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f0f1a;
+    --surface: #1a1a2e;
+    --card: #16213e;
+    --accent1: #f5a623;
+    --accent2: #4fc3f7;
+    --accent3: #81c784;
+    --accent4: #f06292;
+    --text: #f0f0ff;
+    --muted: #8888aa;
+    --correct: #4caf50;
+    --wrong: #ef5350;
+    --header-bg: #0d47a1;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'M PLUS Rounded 1c', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px 12px;
+    background-image:
+      radial-gradient(ellipse at 20% 20%, rgba(79,195,247,0.07) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 80%, rgba(245,166,35,0.07) 0%, transparent 60%);
+  }
+
+  h1 {
+    font-family: 'Kaisei Decol', serif;
+    font-size: clamp(1.6rem, 4vw, 2.4rem);
+    letter-spacing: 0.12em;
+    background: linear-gradient(135deg, var(--accent1), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 6px;
+    text-align: center;
+  }
+
+  .subtitle {
+    font-size: 0.78rem;
+    color: var(--muted);
+    letter-spacing: 0.15em;
+    margin-bottom: 18px;
+    text-align: center;
+  }
+
+  /* ── SETUP PANEL ── */
+  #setup {
+    background: var(--card);
+    border: 1px solid rgba(79,195,247,0.2);
+    border-radius: 16px;
+    padding: 24px 28px;
+    width: 100%;
+    max-width: 520px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  }
+
+  .setup-section { margin-bottom: 18px; }
+  .setup-label {
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.2em;
+    color: var(--accent2);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+
+  .op-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+
+  .op-btn {
+    background: var(--surface);
+    border: 2px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 1.2rem;
+    font-weight: 800;
+    padding: 10px 4px;
+    cursor: pointer;
+    transition: all 0.18s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+  .op-btn span { font-size: 0.6rem; color: var(--muted); font-weight: 400; }
+  .op-btn:hover { border-color: var(--accent2); transform: translateY(-2px); }
+  .op-btn.active { border-color: var(--accent1); background: rgba(245,166,35,0.18); }
+
+  .range-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+  .range-row label { font-size: 0.8rem; color: var(--muted); white-space: nowrap; }
+  .range-row select {
+    background: var(--surface);
+    border: 1.5px solid rgba(255,255,255,0.12);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 0.9rem;
+    padding: 6px 10px;
+    cursor: pointer;
+    flex: 1;
+  }
+
+  .start-btn {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, var(--accent1), #e67e00);
+    border: none;
+    border-radius: 12px;
+    color: #000;
+    font-family: inherit;
+    font-size: 1.1rem;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    transition: all 0.18s;
+    box-shadow: 0 4px 16px rgba(245,166,35,0.35);
+  }
+  .start-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(245,166,35,0.5); }
+  .start-btn:active { transform: translateY(0); }
+
+  /* ── GAME PANEL ── */
+  #game { display: none; width: 100%; max-width: 700px; }
+
+  .hud {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .hud-box {
+    background: var(--card);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px;
+    padding: 8px 16px;
+    text-align: center;
+    min-width: 80px;
+  }
+  .hud-box .val {
+    font-size: 1.4rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+  }
+  .hud-box .lbl {
+    font-size: 0.58rem;
+    color: var(--muted);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+
+  #timerVal { color: var(--accent1); }
+  #correctVal { color: var(--accent3); }
+  #wrongVal { color: var(--accent4); }
+
+  .pause-btn {
+    background: var(--surface);
+    border: 1.5px solid rgba(255,255,255,0.12);
+    border-radius: 8px;
+    color: var(--muted);
+    font-family: inherit;
+    font-size: 0.8rem;
+    padding: 6px 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .pause-btn:hover { color: var(--text); border-color: var(--accent2); }
+
+  /* ── GRID ── */
+  .grid-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  table {
+    border-collapse: collapse;
+    margin: 0 auto;
+  }
+
+  td, th {
+    width: 52px;
+    height: 48px;
+    text-align: center;
+    font-size: 0.85rem;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+
+  /* corner cell */
+  .corner {
+    background: #0a0a16;
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: var(--accent1);
+    border: none;
+  }
+
+  /* header cells (top row & left col) */
+  .hdr-top {
+    background: linear-gradient(180deg, #1565c0, #0d47a1);
+    color: #fff;
+    font-weight: 800;
+    font-size: 1rem;
+    border-color: rgba(255,255,255,0.1);
+  }
+  .hdr-left {
+    background: linear-gradient(90deg, #1565c0, #0d47a1);
+    color: #fff;
+    font-weight: 800;
+    font-size: 1rem;
+    border-color: rgba(255,255,255,0.1);
+  }
+
+  /* answer cells */
+  .cell {
+    position: relative;
+    background: var(--surface);
+    transition: background 0.15s;
+  }
+  .cell input {
+    width: 100%;
+    height: 100%;
+    background: transparent;
+    border: none;
+    text-align: center;
+    font-family: inherit;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--text);
+    outline: none;
+    padding: 0;
+    caret-color: var(--accent2);
+  }
+  .cell input:focus { background: rgba(79,195,247,0.1); }
+  .cell.correct { background: rgba(76,175,80,0.22) !important; }
+  .cell.correct input { color: var(--correct); }
+  .cell.wrong { background: rgba(239,83,80,0.22) !important; animation: shake 0.25s; }
+  .cell.wrong input { color: var(--wrong); }
+
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    25% { transform: translateX(-4px); }
+    75% { transform: translateX(4px); }
+  }
+
+  .cell.active-row { background: rgba(79,195,247,0.06); }
+
+  /* ── RESULT PANEL ── */
+  #result {
+    display: none;
+    background: var(--card);
+    border: 1px solid rgba(129,199,132,0.3);
+    border-radius: 16px;
+    padding: 28px;
+    width: 100%;
+    max-width: 520px;
+    text-align: center;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  }
+
+  .result-emoji { font-size: 3rem; margin-bottom: 10px; }
+  .result-title {
+    font-family: 'Kaisei Decol', serif;
+    font-size: 1.5rem;
+    margin-bottom: 18px;
+    background: linear-gradient(135deg, var(--accent3), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .result-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 22px;
+  }
+
+  .stat-box {
+    background: var(--surface);
+    border-radius: 10px;
+    padding: 12px 8px;
+  }
+  .stat-box .sv {
+    font-size: 1.5rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+  }
+  .stat-box .sl { font-size: 0.65rem; color: var(--muted); letter-spacing: 0.1em; margin-top: 2px; }
+
+  .btn-row { display: flex; gap: 10px; }
+  .retry-btn {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 0.9rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition: all 0.18s;
+  }
+  .retry-btn.primary {
+    background: linear-gradient(135deg, var(--accent1), #e67e00);
+    color: #000;
+  }
+  .retry-btn.secondary {
+    background: var(--surface);
+    color: var(--text);
+    border: 1.5px solid rgba(255,255,255,0.12);
+  }
+  .retry-btn:hover { transform: translateY(-2px); }
+
+  /* ── RECORD TABLE ── */
+  #records { width: 100%; max-width: 520px; margin-top: 18px; }
+  #records h3 {
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .record-list {
+    background: var(--card);
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .record-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 14px;
+    font-size: 0.82rem;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .record-item:last-child { border-bottom: none; }
+  .record-item .ri-op { color: var(--accent1); font-weight: 800; width: 24px; }
+  .record-item .ri-time { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--accent2); }
+  .record-item .ri-score { color: var(--accent3); font-size: 0.75rem; }
+  .record-item .ri-rank { font-size: 0.68rem; color: var(--muted); }
+
+  /* pause overlay */
+  #pauseOverlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 100;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    gap: 16px;
+    font-size: 1.5rem;
+    font-weight: 800;
+    letter-spacing: 0.2em;
+    color: var(--text);
+    backdrop-filter: blur(4px);
+  }
+  #pauseOverlay.active { display: flex; }
+  #pauseOverlay button {
+    padding: 12px 28px;
+    background: var(--accent1);
+    border: none;
+    border-radius: 10px;
+    color: #000;
+    font-family: inherit;
+    font-weight: 800;
+    font-size: 1rem;
+    cursor: pointer;
+  }
+
+  @media (max-width: 500px) {
+    td, th { width: 34px; height: 38px; font-size: 0.75rem; }
+    .cell input { font-size: 0.78rem; }
+    .hdr-top, .hdr-left { font-size: 0.85rem; }
+  }
+</style>
+</head>
+<body>
+
+<h1>100マス計算</h1>
+<p class="subtitle">SPEED MATH DRILL</p>
+
+<!-- SETUP -->
+<div id="setup">
+  <div class="setup-section">
+    <div class="setup-label">演算を選ぼう</div>
+    <div class="op-grid">
+      <button class="op-btn active" data-op="+" onclick="selectOp(this)">＋<span>たし算</span></button>
+      <button class="op-btn" data-op="-" onclick="selectOp(this)">－<span>ひき算</span></button>
+      <button class="op-btn" data-op="×" onclick="selectOp(this)">×<span>かけ算</span></button>
+      <button class="op-btn" data-op="÷" onclick="selectOp(this)">÷<span>わり算</span></button>
+    </div>
+  </div>
+
+  <div class="setup-section">
+    <div class="setup-label">数の範囲</div>
+    <div class="range-row">
+      <label>列（上）</label>
+      <select id="rangeTopMax">
+        <option value="9">1〜9</option>
+        <option value="12">1〜12</option>
+        <option value="19">1〜19</option>
+        <option value="20">1〜20</option>
+      </select>
+      <label>行（左）</label>
+      <select id="rangeLeftMax">
+        <option value="9">1〜9</option>
+        <option value="12">1〜12</option>
+        <option value="19">1〜19</option>
+        <option value="20">1〜20</option>
+      </select>
+    </div>
+  </div>
+
+  <button class="start-btn" onclick="startGame()">▶ スタート！</button>
+
+  <!-- records shown here after games -->
+  <div id="records" style="margin-top:18px;display:none;">
+    <h3>📊 記録</h3>
+    <div class="record-list" id="recordList"></div>
+  </div>
+</div>
+
+<!-- GAME -->
+<div id="game">
+  <div class="hud">
+    <div class="hud-box">
+      <div class="val" id="timerVal">0:00</div>
+      <div class="lbl">⏱ タイム</div>
+    </div>
+    <div class="hud-box">
+      <div class="val" id="correctVal">0</div>
+      <div class="lbl">✅ 正解</div>
+    </div>
+    <div class="hud-box">
+      <div class="val" id="wrongVal">0</div>
+      <div class="lbl">❌ まちがい</div>
+    </div>
+    <div class="hud-box">
+      <div class="val" id="remainVal">100</div>
+      <div class="lbl">📝 のこり</div>
+    </div>
+    <button class="pause-btn" onclick="togglePause()">⏸ 一時停止</button>
+  </div>
+
+  <div class="grid-wrap">
+    <table id="gridTable"></table>
+  </div>
+</div>
+
+<!-- RESULT -->
+<div id="result">
+  <div class="result-emoji" id="resultEmoji">🎉</div>
+  <div class="result-title" id="resultTitle">クリア！</div>
+  <div class="result-stats">
+    <div class="stat-box">
+      <div class="sv" id="rTime" style="color:var(--accent1)">—</div>
+      <div class="sl">⏱ タイム</div>
+    </div>
+    <div class="stat-box">
+      <div class="sv" id="rCorrect" style="color:var(--accent3)">—</div>
+      <div class="sl">✅ 正解</div>
+    </div>
+    <div class="stat-box">
+      <div class="sv" id="rWrong" style="color:var(--accent4)">—</div>
+      <div class="sl">❌ まちがい</div>
+    </div>
+  </div>
+  <div class="btn-row">
+    <button class="retry-btn primary" onclick="retrySame()">🔄 もう一度</button>
+    <button class="retry-btn secondary" onclick="goSetup()">⚙ 設定に戻る</button>
+  </div>
+</div>
+
+<div id="pauseOverlay">
+  ⏸ 一時停止中
+  <button onclick="togglePause()">▶ 再開</button>
+</div>
+
+<script>
+let currentOp = '+';
+let topNums = [], leftNums = [];
+let answers = [];
+let cells = [];
+let correct = 0, wrong = 0, remain = 100;
+let startTime, elapsed = 0, timerInterval;
+let isPaused = false;
+let gameActive = false;
+let records = JSON.parse(localStorage.getItem('100masu_records') || '[]');
+
+function selectOp(btn) {
+  document.querySelectorAll('.op-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentOp = btn.dataset.op;
+  updateRangeOptions();
+}
+
+function updateRangeOptions() {
+  // For division, restrict ranges to make clean answers
+  const topSel = document.getElementById('rangeTopMax');
+  const leftSel = document.getElementById('rangeLeftMax');
+  if (currentOp === '÷') {
+    topSel.innerHTML = '<option value="9">1〜9</option><option value="12">1〜12</option>';
+    leftSel.innerHTML = '<option value="9">1〜9</option><option value="12">1〜12</option>';
+  } else if (currentOp === '-') {
+    topSel.innerHTML = '<option value="9">1〜9</option><option value="19">1〜19</option><option value="20">1〜20</option>';
+    leftSel.innerHTML = '<option value="9">1〜9</option><option value="19">1〜19</option><option value="20">1〜20</option>';
+  } else {
+    topSel.innerHTML = '<option value="9">1〜9</option><option value="12">1〜12</option><option value="19">1〜19</option><option value="20">1〜20</option>';
+    leftSel.innerHTML = '<option value="9">1〜9</option><option value="12">1〜12</option><option value="19">1〜19</option><option value="20">1〜20</option>';
+  }
+}
+
+function randInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function generateNums(max, count = 10) {
+  if (max < count) {
+    // repeat if range is small
+    let pool = [];
+    while (pool.length < count) {
+      pool.push(randInt(1, max));
+    }
+    return shuffle(pool);
+  }
+  let pool = [];
+  for (let i = 1; i <= max; i++) pool.push(i);
+  shuffle(pool);
+  return pool.slice(0, count);
+}
+
+function computeAnswer(top, left) {
+  switch (currentOp) {
+    case '+': return top + left;
+    case '-': return left - top; // left is row, top is col; ensure left >= top handled at gen
+    case '×': return top * left;
+    case '÷': return left / top; // left divisible by top, guaranteed at gen
+  }
+}
+
+function startGame() {
+  const topMax = parseInt(document.getElementById('rangeTopMax').value);
+  const leftMax = parseInt(document.getElementById('rangeLeftMax').value);
+
+  // Generate top (column headers) and left (row headers)
+  if (currentOp === '÷') {
+    // top = divisors (1-9), left = multiples of divisors
+    topNums = generateNums(topMax, 10);
+    // left = numbers that are divisible by at least some top values; just 1-9 products
+    let possibleLeft = [];
+    for (let l = 1; l <= leftMax * topMax; l++) {
+      if (topNums.some(t => l % t === 0)) possibleLeft.push(l);
+    }
+    // pick 10 from possibleLeft that are divisible by ALL top nums for clean grid
+    // Simpler: make left = multiples of LCM? Too complex. Just ensure each cell is whole:
+    // Use: left values are multiples of each top; generate independently per cell
+    // Actually for 100マス÷: top=divisors, left=dividends that are divisible by that specific column's divisor
+    // The answer per cell = leftNums[row] / topNums[col] - must be integer
+    // Strategy: pick topNums freely, then pick leftNums as multiples of LCM(topNums)
+    // Compute LCM
+    function gcd(a,b){return b?gcd(b,a%b):a;}
+    function lcm(a,b){return a/gcd(a,b)*b;}
+    let L = topNums.reduce((acc,v)=>lcm(acc,v),1);
+    let maxLeft = leftMax * 12;
+    let multiples = [];
+    for (let m = L; m <= maxLeft; m += L) multiples.push(m);
+    if (multiples.length < 10) {
+      // fallback: each column independent, store per-cell answers
+      leftNums = generateNums(leftMax, 10);
+    } else {
+      shuffle(multiples);
+      leftNums = multiples.slice(0, 10);
+    }
+  } else if (currentOp === '-') {
+    // Ensure left (row) >= top (col) for positive answers
+    topNums = generateNums(topMax, 10);
+    leftNums = generateNums(leftMax, 10);
+  } else {
+    topNums = generateNums(topMax, 10);
+    leftNums = generateNums(leftMax, 10);
+  }
+
+  buildGrid();
+  correct = 0; wrong = 0; remain = 100;
+  elapsed = 0;
+  isPaused = false;
+
+  document.getElementById('setup').style.display = 'none';
+  document.getElementById('result').style.display = 'none';
+  document.getElementById('game').style.display = 'block';
+  updateHUD();
+
+  startTime = Date.now();
+  clearInterval(timerInterval);
+  timerInterval = setInterval(tickTimer, 100);
+  gameActive = true;
+
+  // Focus first cell
+  if (cells[0] && cells[0][0]) cells[0][0].focus();
+}
+
+let lastOp, lastTopMax, lastLeftMax;
+
+function buildGrid() {
+  lastOp = currentOp;
+  lastTopMax = parseInt(document.getElementById('rangeTopMax').value);
+  lastLeftMax = parseInt(document.getElementById('rangeLeftMax').value);
+
+  const table = document.getElementById('gridTable');
+  table.innerHTML = '';
+  cells = [];
+  answers = [];
+
+  // Header row
+  const thead = document.createElement('tr');
+  const corner = document.createElement('th');
+  corner.className = 'corner';
+  corner.textContent = currentOp;
+  thead.appendChild(corner);
+  for (let c = 0; c < 10; c++) {
+    const th = document.createElement('th');
+    th.className = 'hdr-top';
+    th.textContent = topNums[c];
+    thead.appendChild(th);
+  }
+  table.appendChild(thead);
+
+  // Data rows
+  for (let r = 0; r < 10; r++) {
+    const tr = document.createElement('tr');
+    const rowHdr = document.createElement('th');
+    rowHdr.className = 'hdr-left';
+    rowHdr.textContent = leftNums[r];
+    tr.appendChild(rowHdr);
+
+    cells[r] = [];
+    answers[r] = [];
+
+    for (let c = 0; c < 10; c++) {
+      let ans;
+      if (currentOp === '÷') {
+        // ensure divisible
+        ans = leftNums[r] % topNums[c] === 0 ? leftNums[r] / topNums[c] : null;
+      } else if (currentOp === '-') {
+        ans = leftNums[r] - topNums[c];
+      } else {
+        ans = computeAnswer(topNums[c], leftNums[r]);
+      }
+      answers[r][c] = ans;
+
+      const td = document.createElement('td');
+      td.className = 'cell';
+
+      if (ans === null || ans < 0) {
+        // Invalid cell (negative subtraction or non-integer division)
+        td.style.background = 'rgba(255,255,255,0.03)';
+        td.innerHTML = '<span style="color:rgba(255,255,255,0.15);font-size:0.9rem;">—</span>';
+        td.dataset.skip = '1';
+        remain--;
+      } else {
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.inputMode = 'numeric';
+        input.pattern = '[0-9]*';
+        input.maxLength = 4;
+        input.dataset.row = r;
+        input.dataset.col = c;
+        input.addEventListener('input', onInput);
+        input.addEventListener('keydown', onKeyDown);
+        input.addEventListener('focus', onFocus);
+        td.appendChild(input);
+        cells[r][c] = input;
+      }
+      tr.appendChild(td);
+    }
+    table.appendChild(tr);
+  }
+}
+
+function onFocus(e) {
+  const r = parseInt(e.target.dataset.row);
+  // highlight row
+  document.querySelectorAll('.cell').forEach(td => td.classList.remove('active-row'));
+  const tr = e.target.closest('tr');
+  tr.querySelectorAll('.cell').forEach(td => td.classList.add('active-row'));
+}
+
+function onInput(e) {
+  if (!gameActive || isPaused) return;
+  const input = e.target;
+  const r = parseInt(input.dataset.row);
+  const c = parseInt(input.dataset.col);
+  const val = input.value.trim();
+  if (val === '') {
+    input.parentElement.classList.remove('correct', 'wrong');
+    return;
+  }
+  const num = parseInt(val);
+  if (isNaN(num)) { input.value = ''; return; }
+
+  if (num === answers[r][c]) {
+    if (!input.parentElement.classList.contains('correct')) {
+      input.parentElement.classList.add('correct');
+      input.parentElement.classList.remove('wrong');
+      input.disabled = true;
+      correct++;
+      remain--;
+      updateHUD();
+      if (remain <= 0) finishGame();
+      else moveNext(r, c);
+    }
+  } else {
+    // Show wrong after a short delay if input seems complete
+    clearTimeout(input._wrongTimer);
+    input._wrongTimer = setTimeout(() => {
+      if (parseInt(input.value) !== answers[r][c]) {
+        input.parentElement.classList.add('wrong');
+        input.parentElement.classList.remove('correct');
+        wrong++;
+        updateHUD();
+        input.value = '';
+        setTimeout(() => input.parentElement.classList.remove('wrong'), 600);
+      }
+    }, 800);
+  }
+}
+
+function onKeyDown(e) {
+  const r = parseInt(e.target.dataset.row);
+  const c = parseInt(e.target.dataset.col);
+  if (e.key === 'Enter' || e.key === 'Tab') {
+    e.preventDefault();
+    moveNext(r, c);
+  } else if (e.key === 'ArrowRight') { e.preventDefault(); moveTo(r, c+1); }
+  else if (e.key === 'ArrowLeft')  { e.preventDefault(); moveTo(r, c-1); }
+  else if (e.key === 'ArrowDown')  { e.preventDefault(); moveTo(r+1, c); }
+  else if (e.key === 'ArrowUp')    { e.preventDefault(); moveTo(r-1, c); }
+}
+
+function moveNext(r, c) {
+  // move right, then down
+  for (let dc = 1; dc <= 10; dc++) {
+    let nc = c + dc, nr = r;
+    if (nc >= 10) { nc -= 10; nr++; }
+    if (nr >= 10) break;
+    const inp = cells[nr] && cells[nr][nc];
+    if (inp && !inp.disabled) { inp.focus(); inp.select(); return; }
+  }
+}
+
+function moveTo(r, c) {
+  if (r < 0 || r >= 10 || c < 0 || c >= 10) return;
+  const inp = cells[r] && cells[r][c];
+  if (inp && !inp.disabled) { inp.focus(); inp.select(); }
+}
+
+function tickTimer() {
+  if (isPaused) return;
+  elapsed = (Date.now() - startTime) / 1000;
+  const m = Math.floor(elapsed / 60);
+  const s = Math.floor(elapsed % 60);
+  document.getElementById('timerVal').textContent = m + ':' + String(s).padStart(2, '0');
+}
+
+function updateHUD() {
+  document.getElementById('correctVal').textContent = correct;
+  document.getElementById('wrongVal').textContent = wrong;
+  document.getElementById('remainVal').textContent = Math.max(0, remain);
+}
+
+function togglePause() {
+  isPaused = !isPaused;
+  const overlay = document.getElementById('pauseOverlay');
+  if (isPaused) {
+    overlay.classList.add('active');
+    startTime = Date.now() - elapsed * 1000; // save
+  } else {
+    overlay.classList.remove('active');
+    startTime = Date.now() - elapsed * 1000;
+  }
+}
+
+function finishGame() {
+  clearInterval(timerInterval);
+  gameActive = false;
+  const totalTime = elapsed;
+  const m = Math.floor(totalTime / 60);
+  const s = (totalTime % 60).toFixed(1);
+
+  // Save record
+  const opLabel = currentOp === '+' ? 'たし算' : currentOp === '-' ? 'ひき算' : currentOp === '×' ? 'かけ算' : 'わり算';
+  const rec = {
+    op: currentOp,
+    opLabel,
+    time: totalTime,
+    timeStr: m + ':' + String(Math.floor(totalTime % 60)).padStart(2,'0') + '.' + s.split('.')[1],
+    correct,
+    wrong,
+    date: new Date().toLocaleDateString('ja-JP')
+  };
+  records.unshift(rec);
+  if (records.length > 10) records = records.slice(0, 10);
+  localStorage.setItem('100masu_records', JSON.stringify(records));
+
+  // Show result
+  document.getElementById('game').style.display = 'none';
+  const resultEl = document.getElementById('result');
+  resultEl.style.display = 'block';
+
+  const accuracy = Math.round(correct / (correct + wrong) * 100) || 100;
+  let emoji = '🎉', title = 'クリア！';
+  if (totalTime < 120 && wrong === 0) { emoji = '🏆'; title = '完璧！すごい！'; }
+  else if (totalTime < 180 && accuracy >= 90) { emoji = '⭐'; title = 'すばらしい！'; }
+  else if (accuracy < 70) { emoji = '💪'; title = 'もう一度チャレンジ！'; }
+
+  document.getElementById('resultEmoji').textContent = emoji;
+  document.getElementById('resultTitle').textContent = title;
+  document.getElementById('rTime').textContent = rec.timeStr;
+  document.getElementById('rCorrect').textContent = correct;
+  document.getElementById('rWrong').textContent = wrong;
+
+  renderRecords();
+}
+
+function renderRecords() {
+  if (records.length === 0) return;
+  const el = document.getElementById('records');
+  const list = document.getElementById('recordList');
+  el.style.display = 'block';
+  list.innerHTML = records.map((r, i) => {
+    const rank = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i+1}.`;
+    return `<div class="record-item">
+      <span class="ri-rank">${rank}</span>
+      <span class="ri-op">${r.op}</span>
+      <span class="ri-op" style="color:var(--muted);font-size:0.7rem;font-weight:400;">${r.opLabel}</span>
+      <span class="ri-time">${r.timeStr}</span>
+      <span class="ri-score">正解 ${r.correct} / 誤 ${r.wrong}</span>
+      <span class="ri-rank">${r.date}</span>
+    </div>`;
+  }).join('');
+}
+
+function retrySame() {
+  document.getElementById('result').style.display = 'none';
+  // Restore op and range
+  document.getElementById('game').style.display = 'none';
+  startGame();
+}
+
+function goSetup() {
+  document.getElementById('result').style.display = 'none';
+  document.getElementById('setup').style.display = 'block';
+  renderRecords();
+}
+
+// Init
+renderRecords();
+updateRangeOptions();
+</script>
+</body>
+</html>
